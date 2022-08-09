@@ -19,9 +19,40 @@ var uiController = (function(){
         Orlogo: ".budget__income--value",
         Zarlaga: ".budget__expenses--value",
         huwi: ".budget__expenses--percentage",
-        containerDiv: ".container"
+        containerDiv: ".container",
+        expensePercentageLabel: ".item__percentage",
+        dateLabel: ".budget__title--month"
     };
+    var nodeListForeach = function(list, callback) {
+        for (var i = 0; i < list.length; i++) {
+          callback(list[i], i)
+        };
+      };
+
+      var formatMoney = function(too, type){
+        too = too + ""
+        var x = too.split("").reverse().join("");
+        var y = "";
+        var count = 1;
+
+        for(var i = 0; i < x.length; i++){
+            y = y + x[i];
+            if(count % 3 === 0 ) y = y + ",";
+            count++;
+        };
+
+        var z = y.split("").reverse().join("");
+        if(z[0] === ",") z = z.substr(1, z.length - 1);
+        if( type === "inc"){ z = "+ " + z} else {z = "- " + z};
+        
+        return z;
+      };
+   
     return {
+        displayDate: function (){
+            var unuudur = new Date();
+            document.querySelector(DOMstrings.dateLabel).textContent = unuudur.getFullYear()+ " оны " +unuudur.getMonth() + " сарын ";
+        },
         getValues: function(){
             return{
                 type: document.querySelector(DOMstrings.inputType).value,
@@ -29,7 +60,15 @@ var uiController = (function(){
                 value: parseInt(document.querySelector(DOMstrings.inputValue).value)
             };
         },
-
+        displayPercentages: function(allPercentages) {
+            var elements = document.querySelectorAll(
+              DOMstrings.expensePercentageLabel
+            );
+      
+            nodeListForeach(elements, function(el, index) {
+              el.textContent = allPercentages[index] + "%";
+            });
+        },
         getDOMstrings: function(){
             return DOMstrings;
         },
@@ -45,9 +84,9 @@ var uiController = (function(){
                html = ' <div class="item clearfix" id="exp-%id%"><div class="item__description">$$DESCRIPTION$$</div><div class="right clearfix"><div class="item__value">$$VALUE$$</div><div class="item__percentage">21%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div> '
             }
             // Ter HTML dotroo REPLACE ashiglan orlogo zarlagiin utguudiig uurchlunu
-            html = html.replace("%id%", item.id)
-            html = html.replace("$$DESCRIPTION$$", item.description)
-            html = html.replace("$$VALUE$$", item.value)
+            html = html.replace("%id%", item.id);
+            html = html.replace("$$DESCRIPTION$$", item.description);
+            html = html.replace("$$VALUE$$", formatMoney(item.value, type));
 
             //  BEltgesen html ee dom ruu hiij ugnu
             document.querySelector(list).insertAdjacentHTML("beforeend", html);
@@ -67,11 +106,21 @@ var uiController = (function(){
            
         },
         TusviigUzuuleh: function(tusuv){
-            document.querySelector(DOMstrings.tusuv).textContent = tusuv.tusuv;
-            document.querySelector(DOMstrings.Orlogo).textContent = tusuv.niitOrlogo;
-            document.querySelector(DOMstrings.Zarlaga).textContent = tusuv.niitZarlaga;
+            if( tusuv.tusuv > 0 ) type = "inc"
+            else type = "exp"
+            document.querySelector(DOMstrings.tusuv).textContent = formatMoney(tusuv.tusuv, type);
+            document.querySelector(DOMstrings.Orlogo).textContent = formatMoney(tusuv.niitOrlogo, "inc");
+            document.querySelector(DOMstrings.Zarlaga).textContent = formatMoney(tusuv.niitZarlaga, "exp");
             document.querySelector(DOMstrings.huwi).textContent = tusuv.huvi + "%";
 
+        },
+
+        changeType: function(){
+          var filds =   document.querySelectorAll(DOMstrings.inputType + ", " + DOMstrings.inputDescription + " ," + DOMstrings.inputValue);
+            nodeListForeach(filds, function(el){
+                el.classList.toggle("red-focus");
+                document.querySelector(DOMstrings.addBtn).classList.toggle("red");
+            });
         }
     };
 })();
@@ -119,6 +168,7 @@ var financeController = (function(){
         tusuv: 0,
         huvi: 0
       };
+
       return{
         calculatePercentages: function(){
             data.items.exp.forEach(function(el){
@@ -127,20 +177,18 @@ var financeController = (function(){
         },
         getPercentages: function(){
             var allPercentages = data.items.exp.map(function(el){
-                el.getPercentage();
+                return el.getPercentage();
             })
             return allPercentages;
         },
         tusviigTootsooloh(){
             calculate("inc");
             calculate("exp");
-c
+            data.tusuv = data.totals.inc - data.totals.exp;
+
             if(data.totals.inc > 0){
                 data.huvi = Math.round((data.totals.exp / data.totals.inc) * 100);
-                data.tusuv = data.totals.inc - data.totals.exp
-
             }else{
-                data.huvi = 0;
                 data.huvi = 0;
             }
         },
@@ -207,8 +255,7 @@ var appController = (function(uiController, financeController){
 
         var allPercentages = financeController.getPercentages();
 
-        
-        
+        uiController.displayPercentages(allPercentages);
     };
     function ctrlAddItem() {
         // 1. Oruulah ugugdliig olj awna
@@ -256,9 +303,11 @@ var appController = (function(uiController, financeController){
                 updateTusuv();
             }
         });
+        document.querySelector(ds.inputType).addEventListener("change", uiController.changeType)
     }
     return{
         init: function(){
+            uiController.displayDate();
             setupEventListener();
             uiController.TusviigUzuuleh({
                 tusuv: 0,

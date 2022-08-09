@@ -11,7 +11,14 @@ var uiController = (function() {
     incomeLabel: ".budget__income--value",
     expeseLabel: ".budget__expenses--value",
     percentageLabel: ".budget__expenses--percentage",
-    containerDiv: ".container"
+    containerDiv: ".container",
+    expensePercentageLabel: ".item__percentage"
+  };
+
+  var nodeListForeach = function(list, callback) {
+    for (var i = 0; i < list.length; i++) {
+      callback(list[i], i)
+    };
   };
 
   return {
@@ -21,6 +28,18 @@ var uiController = (function() {
         description: document.querySelector(DOMstrings.inputDescription).value,
         value: parseInt(document.querySelector(DOMstrings.inputValue).value)
       };
+    },
+
+    displayPercentages: function(allPercentages) {
+      // Ð—Ð°Ñ€Ð»Ð°Ð³Ñ‹Ð½ NodeList-Ð¸Ð¹Ð³ Ð¾Ð»Ð¾Ñ…
+      var elements = document.querySelectorAll(
+        DOMstrings.expensePercentageLabel
+      );
+
+      // Ð­Ð»ÐµÐ¼ÐµÐ½Ñ‚ Ð±Ð¾Ð»Ð³Ð¾Ð½Ñ‹ Ñ…ÑƒÐ²ÑŒÐ´ Ð·Ð°Ñ€Ð»Ð°Ð³Ñ‹Ð½ Ñ…ÑƒÐ²Ð¸Ð¹Ð³ Ð¼Ð°ÑÑÐ¸Ð²Ð°Ð°Ñ Ð°Ð²Ñ‡ ÑˆÐ¸Ð²Ð¶ Ð¾Ñ€ÑƒÑƒÐ»Ð°Ñ…
+      nodeListForeach(elements, function(el, index) {
+        el.textContent = allPercentages[index];
+      });
     },
 
     getDOMstrings: function() {
@@ -100,6 +119,17 @@ var financeController = (function() {
     this.id = id;
     this.description = description;
     this.value = value;
+    this.percentage = -1;
+  };
+
+  Expense.prototype.calcPercentage = function(totalIncome) {
+    if (totalIncome > 0)
+      this.percentage = Math.round((this.value / totalIncome) * 100);
+    else this.percentage = 0;
+  };
+
+  Expense.prototype.getPercentage = function() {
+    return this.percentage;
   };
 
   var calculateTotal = function(type) {
@@ -130,14 +160,33 @@ var financeController = (function() {
 
   return {
     tusuvTootsooloh: function() {
+      // ÐÐ¸Ð¹Ñ‚ Ð¾Ñ€Ð»Ð¾Ð³Ñ‹Ð½ Ð½Ð¸Ð¹Ð»Ð±ÑÑ€Ð¸Ð¹Ð³ Ñ‚Ð¾Ð¾Ñ†Ð¾Ð¾Ð»Ð½Ð¾
       calculateTotal("inc");
+
+      // ÐÐ¸Ð¹Ñ‚ Ð·Ð°Ñ€Ð»Ð°Ð³Ñ‹Ð½ Ð½Ð¸Ð¹Ð»Ð±ÑÑ€Ð¸Ð¹Ð³ Ñ‚Ð¾Ð¾Ñ†Ð¾Ð¾Ð»Ð½Ð¾
       calculateTotal("exp");
 
+      // Ð¢Ó©ÑÐ²Ð¸Ð¹Ð³ ÑˆÐ¸Ð½ÑÑÑ€ Ñ‚Ð¾Ð¾Ñ†Ð¾Ð¾Ð»Ð½Ð¾
       data.tusuv = data.totals.inc - data.totals.exp;
-      if(data.totals.inc > 0){
-      data.huvi = Math.round((data.totals.exp / data.totals.inc) * 100);
-    }else{ data.huvi = 0;}
 
+      // ÐžÑ€Ð»Ð¾Ð³Ð¾ Ð·Ð°Ñ€Ð»Ð°Ð³Ñ‹Ð½ Ñ…ÑƒÐ²Ð¸Ð¹Ð³ Ñ‚Ð¾Ð¾Ñ†Ð¾Ð¾Ð»Ð½Ð¾
+      if (data.totals.inc > 0)
+        data.huvi = Math.round((data.totals.exp / data.totals.inc) * 100);
+      else data.huvi = 0;
+    },
+
+    calculatePercentages: function() {
+      data.items.exp.forEach(function(el) {
+        el.calcPercentage(data.totals.inc);
+      });
+    },
+
+    getPercentages: function() {
+      var allPercentages = data.items.exp.map(function(el) {
+        return el.getPercentage();
+      });
+
+      return allPercentages;
     },
 
     tusviigAvah: function() {
@@ -218,6 +267,15 @@ var appController = (function(uiController, financeController) {
 
     // 6. Ð¢Ó©ÑÐ²Ð¸Ð¹Ð½ Ñ‚Ð¾Ð¾Ñ†Ð¾Ð¾Ð³ Ð´ÑÐ»Ð³ÑÑ†ÑÐ½Ð´ Ð³Ð°Ñ€Ð³Ð°Ð½Ð°.
     uiController.tusviigUzuuleh(tusuv);
+
+    // 7. Ð­Ð»ÐµÐ¼ÐµÐ½Ñ‚Ò¯Ò¯Ð´Ð¸Ð¹Ð½ Ñ…ÑƒÐ²Ð¸Ð¹Ð³ Ñ‚Ð¾Ð¾Ñ†Ð¾Ð¾Ð»Ð½Ð¾
+    financeController.calculatePercentages();
+
+    // 8. Ð­Ð»ÐµÐ¼ÐµÐ½Ñ‚Ò¯Ò¯Ð´Ð¸Ð¹Ð½ Ñ…ÑƒÐ²Ð¸Ð¹Ð³ Ñ…Ò¯Ð»ÑÑÐ¶ Ð°Ð²Ð½Ð°
+    var allPercentages = financeController.getPercentages();
+
+    // 9. Ð­Ð´Ð³ÑÑÑ€ Ñ…ÑƒÐ²Ð¸Ð¹Ð³ Ð´ÑÐ»Ð³ÑÑ†ÑÐ½Ð´ Ð³Ð°Ñ€Ð³Ð°Ð½Ð°.
+    uiController.displayPercentages(allPercentages);
   };
 
   var setupEventListeners = function() {
